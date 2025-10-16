@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Generador de Cotización</title>
+  <link rel="stylesheet" href="assets/css/cotizacion.css">
+</head>
+<body>
+  <!-- === NAVBAR === -->
+  <nav class="navbar">
+    <h1>Generador de Cotización</h1>
+    <ul>
+      <li class="tab active" data-tab="infraestructura">Infraestructura</li>
+      <li class="tab" data-tab="suministros">Suministros</li>
+      <li class="tab" data-tab="empleados">Empleados</li>
+      <li class="tab" data-tab="admin">Administrar listas</li>
+      <li class="tab" data-tab="resumen">Resumen</li>
+    </ul>
+  </nav>
+
+  <main>
+    <!-- === INFRAESTRUCTURA === -->
+    <section id="tab-infraestructura" class="tab-content active">
+      <h2>Infraestructura</h2>
+      <div class="form-row">
+        <select id="infraSelect"></select>
+        <input type="number" id="infraCantidad" placeholder="Cantidad">
+        <input type="number" id="infraValor" placeholder="Valor (COP)">
+        <button onclick="agregarItem('Infraestructura')">Agregar</button>
+      </div>
+    </section>
+
+    <!-- === SUMINISTROS === -->
+    <section id="tab-suministros" class="tab-content">
+      <h2>Suministros</h2>
+      <div class="form-row">
+        <select id="suministroSelect"></select>
+        <input type="number" id="suministroCantidad" placeholder="Cantidad">
+        <input type="number" id="suministroValor" placeholder="Valor (COP)">
+        <button onclick="agregarItem('Suministros')">Agregar</button>
+      </div>
+    </section>
+
+    <!-- === EMPLEADOS === -->
+    <section id="tab-empleados" class="tab-content">
+      <h2>Empleados</h2>
+      <div class="form-row">
+        <select id="empleadoSelect"></select>
+        <input type="number" id="empleadoCantidad" placeholder="Cantidad">
+        <input type="number" id="empleadoValor" placeholder="Valor (COP)">
+        <button onclick="agregarItem('Empleados')">Agregar</button>
+      </div>
+    </section>
+
+    <!-- === ADMINISTRAR LISTAS === -->
+    <section id="tab-admin" class="tab-content">
+      <h2>Administrar Listas y Categorías</h2>
+
+      <!-- Crear nueva categoría -->
+      <div class="form-row">
+        <input type="text" id="nuevaCategoria" placeholder="Nueva categoría...">
+        <button id="btnAgregarCategoria">Agregar categoría</button>
+      </div>
+
+      <!-- Agregar nuevo elemento -->
+      <div class="form-row">
+        <select id="tipoLista"></select>
+        <input type="text" id="nuevoElemento" placeholder="Nuevo elemento...">
+        <button id="btnAgregarElemento">Agregar elemento</button>
+      </div>
+
+      <div id="vistaListas" class="vista-listas"></div>
+    </section>
+
+    <!-- === RESUMEN === -->
+    <section id="tab-resumen" class="tab-content">
+      <h2>Resumen de Cotización</h2>
+      <table id="tablaResumen">
+        <thead>
+          <tr>
+            <th>Sección</th>
+            <th>Elemento</th>
+            <th>Cantidad</th>
+            <th>Valor Unitario</th>
+            <th>Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="total">
+        <strong>Total General: </strong>
+        <span id="totalGeneral">0</span> COP
+      </div>
+
+      <button id="btnActa">Generar Acta (PDF)</button>
+    </section>
+  </main>
+
+  <!-- === SCRIPTS === -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="assets/js/cotizacion.js"></script>
+</body>
+</html>
