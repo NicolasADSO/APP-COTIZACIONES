@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Inventarios</title>
+  <link rel="stylesheet" href="assets/css/cotizacion.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f6f6;
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #990f0c;
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .volver {
+      background: white;
+      color: #990f0c;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .volver:hover { background: #f1f1f1; }
+
+    main {
+      padding: 20px;
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    section {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+
+    section h2 {
+      color: #990f0c;
+      margin-top: 0;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0;
+      align-items: center;
+    }
+
+    .form-row input,
+    .form-row select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .form-row button {
+      background: #990f0c;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .form-row button:hover { background: #b71c1c; }
+
+    .btn-subgrupo {
+      background: #2196f3;
+    }
+
+    .btn-subgrupo:hover {
+      background: #1976d2;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th { background: #f1f1f1; }
+
+    .acciones button {
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 0 3px;
+      color: white;
+    }
+
+    .editar { background: #2196f3; }
+    .eliminar { background: #e53935; }
+
+
+  /* === INVENTARIO CARDS === */
+.cards-contenedor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.card-cat {
+  background: white;
+  border: 2px solid #990f0c;
+  border-radius: 10px;
+  box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card-cat:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 10px rgba(0,0,0,0.15);
+}
+
+.card-cat-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.card-cat-header h3 {
+  color: #990f0c;
+  margin: 0;
+  font-size: 18px;
+}
+
+.card-cat-header button {
+  background: #e53935;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.card-cat-header button:hover {
+  background: #c62828;
+}
+
+/* === SUBGRUPOS === */
+.subgrupo {
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 10px;
+  border: 1px solid #ddd;
+}
+
+.subgrupo h4 {
+  margin: 0 0 8px 0;
+  color: #444;
+  font-size: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 4px;
+}
+
+/* === ITEMS === */
+.item {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin: 4px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.item span {
+  color: #333;
+}
+
+.item .acciones button {
+  border: none;
+  padding: 4px 8px;
+  border-radius: 5px;
+  margin-left: 5px;
+  cursor: pointer;
+  color: white;
+  font-size: 12px;
+}
+
+.item .editar { background: #2196f3; }
+.item .eliminar { background: #e53935; }
+.item .editar:hover { background: #1976d2; }
+.item .eliminar:hover { background: #c62828; }
+
+.subgrupo h4.general {
+  color: #990f0c;
+  font-weight: bold;
+  font-style: italic;
+}
+
+
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gestión de Inventarios</h1>
+    <a href="cotizacion.html" class="volver">← Volver</a>
+  </header>
+
+  <main>
+    <!-- === CREAR CATEGORÍA === -->
+    <section>
+      <h2>Crear nueva categoría</h2>
+      <div class="form-row">
+        <input type="text" id="nuevaCategoriaInput" placeholder="Nombre de categoría...">
+        <button onclick="crearCategoria()">➕ Crear categoría</button>
+      </div>
+    </section>
+
+    <!-- === CREAR SUBGRUPO === -->
+    <section>
+      <h2>Crear nuevo subgrupo</h2>
+      <div class="form-row">
+        <select id="categoriaSubSelect">
+          <option value="">Seleccione categoría...</option>
+        </select>
+        <input type="text" id="nuevoSubgrupoInput" placeholder="Nombre del subgrupo...">
+        <button onclick="crearSubgrupo()">➕ Crear subgrupo</button>
+      </div>
+    </section>
+
+    <!-- === AGREGAR ÍTEM === -->
+    <section>
+      <h2>Agregar ítem a subgrupo</h2>
+      <div class="form-row">
+        <select id="categoriaItemSelect" onchange="cargarSubgruposParaItems()">
+        <option value="">Seleccione categoría...</option>
+      </select>
+      <select id="subgrupoItemSelect">
+        <option value="">(Opcional) Subgrupo...</option>
+      </select>
+        <input type="text" id="nombreItem" placeholder="Nombre del ítem...">
+        <input type="number" id="cantidadItem" placeholder="Cantidad disponible...">
+        <button onclick="agregarItem()">➕ Agregar ítem</button>
+      </div>
+    </section>
+
+    <!-- === INVENTARIO GENERAL (CARDS) === -->
+    <section>
+      <h2>Inventario general</h2>
+      <div id="contenedorInventarios" class="cards-contenedor"></div>
+    </section>
+  </main>
+
+
+  <script>
+    // === DATOS BASE ===
+    let inventarios = JSON.parse(localStorage.getItem('inventarios') || '{}');
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (Object.keys(inventarios).length === 0) {
+    inventarios = { suministros: {}, infraestructura: {}, equipos: {} };
+    guardar();
+  }
+  cargarCategoriasSelects();
+  render();
+});
+
+// === GUARDAR ===
+function guardar() {
+  localStorage.setItem('inventarios', JSON.stringify(inventarios));
+}
+
+// === CARGAR CATEGORÍAS EN SELECTS ===
+function cargarCategoriasSelects() {
+  const selects = [document.getElementById('categoriaSubSelect'), document.getElementById('categoriaItemSelect')];
+  selects.forEach(sel => {
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Seleccione categoría...</option>';
+    Object.keys(inventarios).forEach(cat => {
+      const opt = document.createElement('option');
+      opt.value = cat;
+      opt.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
+      sel.appendChild(opt);
+    });
+  });
+}
+
+// === CREAR CATEGORÍA ===
+  function crearCategoria() {
+    const input = document.getElementById('nuevaCategoriaInput');
+    const nombre = input.value.trim().toLowerCase();
+
+    if (!nombre) return alert('Ingrese un nombre válido.');
+    if (inventarios[nombre]) return alert('Esta categoría ya existe.');
+
+    inventarios[nombre] = {};
+    guardar();
+    input.value = '';
+    cargarCategoriasSelects();
+    render();
+    alert(`✅ Categoría "${nombre}" creada correctamente.`);
+  }
+
+  // === CREAR SUBGRUPO ===
+  function crearSubgrupo() {
+    const cat = document.getElementById('categoriaSubSelect').value;
+    const nuevo = document.getElementById('nuevoSubgrupoInput').value.trim();
+
+    if (!cat) return alert('Seleccione una categoría primero.');
+    if (!nuevo) return alert('Ingrese un nombre de subgrupo.');
+    if (inventarios[cat][nuevo]) return alert('Este subgrupo ya existe.');
+
+    inventarios[cat][nuevo] = [];
+    guardar();
+    document.getElementById('nuevoSubgrupoInput').value = '';
+    render();
+    alert(`📂 Subgrupo "${nuevo}" creado en ${cat}.`);
+  }
+
+  // === CARGAR SUBGRUPOS PARA AGREGAR ÍTEMS ===
+  function cargarSubgruposParaItems() {
+    const cat = document.getElementById('categoriaItemSelect').value;
+    const subSel = document.getElementById('subgrupoItemSelect');
+    subSel.innerHTML = '<option value="">Seleccione subgrupo...</option>';
+    if (!cat || !inventarios[cat]) return;
+    Object.keys(inventarios[cat]).forEach(sg => {
+      const opt = document.createElement('option');
+      opt.value = sg;
+      opt.textContent = sg;
+      subSel.appendChild(opt);
+    });
+  }
+
+  // === AGREGAR ÍTEM ===
+  function agregarItem() {
+    const cat = document.getElementById('categoriaItemSelect').value;
+    let sub = document.getElementById('subgrupoItemSelect').value.trim();
+    const nombre = document.getElementById('nombreItem').value.trim();
+    const cantidad = parseInt(document.getElementById('cantidadItem').value);
+
+    if (!cat || !nombre || isNaN(cantidad)) {
+      alert('Complete los campos correctamente (categoría, nombre, cantidad).');
+      return;
+    }
+
+    // Si no hay subgrupo, usar "general" como contenedor base
+    if (!sub) sub = 'General';
+
+    if (!inventarios[cat][sub]) inventarios[cat][sub] = [];
+    inventarios[cat][sub].push({ nombre, cantidad });
+
+    guardar();
+    render();
+
+    document.getElementById('nombreItem').value = '';
+    document.getElementById('cantidadItem').value = '';
+    alert(`✅ Ítem "${nombre}" agregado en ${cat} > ${sub}.`);
+  }
+
+
+  // === EDITAR / ELIMINAR / ELIMINAR CATEGORÍA ===
+  function editar(cat, sub, i) {
+    const item = inventarios[cat][sub][i];
+    const nuevaCantidad = parseInt(prompt(`Nueva cantidad para ${item.nombre}:`, item.cantidad));
+    if (isNaN(nuevaCantidad)) return;
+    inventarios[cat][sub][i].cantidad = nuevaCantidad;
+    guardar();
+    render();
+  }
+
+  function eliminar(cat, sub, i) {
+    if (!confirm('¿Eliminar este ítem?')) return;
+    inventarios[cat][sub].splice(i, 1);
+    guardar();
+    render();
+  }
+
+  function eliminarCategoria(cat) {
+    if (!confirm(`¿Eliminar toda la categoría "${cat}" y sus subgrupos?`)) return;
+    delete inventarios[cat];
+    guardar();
+    cargarCategoriasSelects();
+    render();
+  }
+
+  // === RENDERIZAR ===
+  function render() {
+    const contenedor = document.getElementById('contenedorInventarios');
+    contenedor.innerHTML = '';
+
+    Object.keys(inventarios).forEach(cat => {
+      const card = document.createElement('div');
+      card.classList.add('card-cat');
+
+      const header = document.createElement('div');
+      header.classList.add('card-cat-header');
+      header.innerHTML = `
+        <h3>${cat.charAt(0).toUpperCase() + cat.slice(1)}</h3>
+        <button onclick="eliminarCategoria('${cat}')">🗑️ Eliminar</button>
+      `;
+      card.appendChild(header);
+
+      Object.keys(inventarios[cat]).forEach(sub => {
+        const subDiv = document.createElement('div');
+        subDiv.classList.add('subgrupo');
+        subDiv.innerHTML = `<h4 class="${sub === 'General' ? 'general' : ''}">${sub}</h4>`;
+
+        inventarios[cat][sub].forEach((item, i) => {
+          const itemDiv = document.createElement('div');
+          itemDiv.classList.add('item');
+          itemDiv.innerHTML = `
+            <span>${item.nombre} — <strong>${item.cantidad}</strong> unidades</span>
+            <div class="acciones">
+              <button class="editar" onclick="editar('${cat}','${sub}',${i})">✏️</button>
+              <button class="eliminar" onclick="eliminar('${cat}','${sub}',${i})">❌</button>
+            </div>
+          `;
+          subDiv.appendChild(itemDiv);
+        });
+
+        card.appendChild(subDiv);
+      });
+
+      contenedor.appendChild(card);
+    });
+  }
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Organizador de Recursos por Fase</title>
+  <style>
+    :root {
+      --rojo: #990f0c;
+      --gris: #f6f6f6;
+      --borde: #e0e0e0;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--gris);
+      margin: 0;
+      min-height: 100vh;
+      color: #333;
+    }
+
+    header {
+      background: var(--rojo);
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 { margin: 0; font-size: 20px; }
+
+    .volver {
+      background: white;
+      color: var(--rojo);
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: 0.2s;
+    }
+
+    .volver:hover { background: #f1f1f1; }
+
+    main {
+      padding: 20px;
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    h2 {
+      color: var(--rojo);
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .fase-card {
+      background: white;
+      border: 1px solid var(--borde);
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .fase-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .fase-header h3 {
+      margin: 0;
+      color: var(--rojo);
+      font-size: 18px;
+    }
+
+    .fase-body {
+      flex: 1;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+
+    .recurso {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-bottom: 1px solid #f2f2f2;
+    }
+
+    .recurso span { font-size: 14px; }
+
+    .recurso button {
+      border: none;
+      background: #e53935;
+      color: white;
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .btn-agregar {
+      margin-top: 10px;
+      background: var(--rojo);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .btn-agregar:hover { background: #b11a17; }
+
+    /* MODAL */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+
+    .modal-content h4 {
+      margin-top: 0;
+      color: var(--rojo);
+    }
+
+    .modal-content select, .modal-content button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .cerrar {
+      background: #ccc;
+      color: black;
+      border: none;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    .cerrar:hover { background: #bbb; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Organizador de Recursos por Fase</h1>
+    <a href="cotizacion.html" class="volver">← Volver</a>
+  </header>
+
+  <main>
+    <h2>Asigna recursos del inventario a cada fase</h2>
+    <div id="contenedorFases" class="grid"></div>
+  </main>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <h4>Agregar recurso</h4>
+      <select id="selectCategoria"></select>
+      <select id="selectSubgrupo"></select>
+      <select id="selectItem"></select>
+      <button id="btnGuardarRecurso">Guardar</button>
+      <button class="cerrar" id="btnCerrar">Cerrar</button>
+    </div>
+  </div>
+
+  <script>
+    const fases = ["digitalizacion", "empaste", "calidad"];
+    let inventarios = JSON.parse(localStorage.getItem("inventarios") || "{}");
+    let asignaciones = JSON.parse(localStorage.getItem("asignaciones_fases") || "{}");
+    let faseActual = null;
+
+    const contenedor = document.getElementById("contenedorFases");
+    const modal = document.getElementById("modal");
+
+    // === Renderizar tarjetas de fases ===
+    function render() {
+      contenedor.innerHTML = "";
+      fases.forEach(fase => {
+        const recursos = asignaciones[fase] || [];
+        const card = document.createElement("div");
+        card.className = "fase-card";
+        card.innerHTML = `
+          <div class="fase-header">
+            <h3>${fase.charAt(0).toUpperCase() + fase.slice(1)}</h3>
+            <button class="btn-agregar" onclick="abrirModal('${fase}')">➕ Agregar</button>
+          </div>
+          <div class="fase-body" id="body-${fase}">
+            ${recursos.length === 0 ? "<p style='font-size:13px;color:#777'>Sin recursos asignados.</p>" :
+              recursos.map(r => `
+                <div class='recurso'>
+                  <span>${r.categoria} → <b>${r.nombre}</b></span>
+                  <button onclick="eliminarRecurso('${fase}','${r.categoria}','${r.nombre}')">🗑️</button>
+                </div>
+              `).join("")}
+          </div>
+        `;
+        contenedor.appendChild(card);
+      });
+    }
+
+    // === Abrir modal para agregar ===
+    function abrirModal(fase) {
+      faseActual = fase;
+      modal.style.display = "flex";
+      cargarCategorias();
+    }
+
+    // === Cargar selects dinámicos ===
+    function cargarCategorias() {
+      const catSelect = document.getElementById("selectCategoria");
+      const subSelect = document.getElementById("selectSubgrupo");
+      const itemSelect = document.getElementById("selectItem");
+
+      catSelect.innerHTML = "<option value=''>Seleccione categoría...</option>";
+      Object.keys(inventarios).forEach(cat => {
+        const opt = document.createElement("option");
+        opt.value = cat;
+        opt.textContent = cat;
+        catSelect.appendChild(opt);
+      });
+
+      catSelect.onchange = () => {
+        const cat = catSelect.value;
+        subSelect.innerHTML = "<option value=''>Seleccione subgrupo...</option>";
+        itemSelect.innerHTML = "<option value=''>Seleccione ítem...</option>";
+        if (!cat) return;
+        Object.keys(inventarios[cat]).forEach(sub => {
+          const opt = document.createElement("option");
+          opt.value = sub;
+          opt.textContent = sub;
+          subSelect.appendChild(opt);
+        });
+      };
+
+      subSelect.onchange = () => {
+        const cat = catSelect.value;
+        const sub = subSelect.value;
+        itemSelect.innerHTML = "<option value=''>Seleccione ítem...</option>";
+        if (!cat || !sub) return;
+        inventarios[cat][sub].forEach(item => {
+          const opt = document.createElement("option");
+          opt.value = item.nombre;
+          opt.textContent = item.nombre;
+          itemSelect.appendChild(opt);
+        });
+      };
+    }
+
+    // === Guardar recurso seleccionado ===
+    document.getElementById("btnGuardarRecurso").onclick = () => {
+      const cat = document.getElementById("selectCategoria").value;
+      const sub = document.getElementById("selectSubgrupo").value;
+      const item = document.getElementById("selectItem").value;
+
+      if (!cat || !sub || !item) {
+        alert("Seleccione todos los campos.");
+        return;
+      }
+
+      if (!asignaciones[faseActual]) asignaciones[faseActual] = [];
+      const existe = asignaciones[faseActual].some(r => r.nombre === item && r.categoria === cat);
+      if (existe) {
+        alert("Este recurso ya está asignado a esta fase.");
+        return;
+      }
+
+      asignaciones[faseActual].push({ categoria: cat, subgrupo: sub, nombre: item });
+      localStorage.setItem("asignaciones_fases", JSON.stringify(asignaciones));
+
+      modal.style.display = "none";
+      render();
+    };
+
+    // === Eliminar recurso ===
+    function eliminarRecurso(fase, cat, nombre) {
+      asignaciones[fase] = asignaciones[fase].filter(r => !(r.categoria === cat && r.nombre === nombre));
+      localStorage.setItem("asignaciones_fases", JSON.stringify(asignaciones));
+      render();
+    }
+
+    // === Cerrar modal ===
+    document.getElementById("btnCerrar").onclick = () => {
+      modal.style.display = "none";
+    };
+
+    // === Iniciar ===
+    document.addEventListener("DOMContentLoaded", render);
+  </script>
+</body>
+</html>

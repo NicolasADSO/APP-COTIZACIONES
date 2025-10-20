@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Simulador de Licitación - BlaaFlow</title>
+  <link rel="stylesheet" href="assets/css/layout.css">
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background: #f6f6f6;
+      margin: 0;
+      padding: 0;
+    }
+
+    .navbar {
+      background: #990f0c;
+      color: white;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .navbar img { height: 40px; }
+
+    .container {
+      max-width: 1000px;
+      margin: 30px auto;
+      background: white;
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    h2, h3 {
+      color: #990f0c;
+      text-align: center;
+    }
+
+    .tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .tab {
+      padding: 10px 20px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #f7f7f7;
+      font-weight: 600;
+      transition: 0.2s;
+    }
+    .tab.active {
+      background: #990f0c;
+      color: white;
+      border-color: #990f0c;
+    }
+
+    form {
+      display: grid;
+      gap: 15px;
+      margin-top: 20px;
+    }
+
+    input, select {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 100%;
+    }
+
+    button {
+      background: #990f0c;
+      color: white;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover { background: #b11a17; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+
+    th { background: #f3f3f3; }
+
+    .total { font-weight: bold; text-align: right; color: #333; }
+
+    .recomendacion {
+      background: #fef5f5;
+      border-left: 4px solid #990f0c;
+      padding: 12px;
+      border-radius: 4px;
+      margin-top: 15px;
+      font-size: 14px;
+    }
+
+    .hidden { display: none; }
+
+    .editable input {
+      width: 100px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      text-align: right;
+      padding: 4px;
+    }
+    .volver{
+      background:#fff; color:var(--rojo);
+      padding:8px 14px; border-radius:8px; text-decoration:none; font-weight:700;
+      border:1px solid #fff; transition:.2s;
+    }
+    .volver:hover{background:#f9f9f9; border-color:#eee}
+  </style>
+</head>
+<body>
+  <!-- NAVBAR -->
+  <div class="navbar">
+    <h1>Simulador de Licitación</h1>
+    <a class="volver" href="cotizacion.html">← Volver</a>
+    <img src="assets/img/logo-sin-fondo.png" alt="Logo BlaaFlow">
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <div class="tab active" id="tabSimulador">Simulador</div>
+    </div>
+
+    <!-- SECCIÓN 1: SIMULADOR -->
+    <div id="seccionSimulador">
+      <h2>Predicción de Recursos</h2>
+      <form id="formSimulador">
+        <label>Proceso requerido:</label>
+        <select id="proceso" required>
+          <option value="">Seleccione...</option>
+          <option value="digitalizacion">Digitalización</option>
+          <option value="empaste">Empaste</option>
+          <option value="calidad">Control de Calidad</option>
+        </select>
+
+        <label>Cantidad de documentos o unidades:</label>
+        <input type="number" id="cantidad" placeholder="Ej: 1000" required>
+
+        <label>Tiempo disponible (días):</label>
+        <input type="number" id="tiempo" placeholder="Ej: 30" required>
+
+        <label>Presupuesto máximo (opcional):</label>
+        <input type="number" id="presupuesto" placeholder="Ej: 10000000">
+
+        <button type="submit">Generar predicción</button>
+      </form>
+
+      <div class="resultado hidden" id="resultado">
+        <h3>Recomendación generada:</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Recurso</th>
+              <th>Cantidad</th>
+              <th>Costo estimado</th>
+              <th>Justificación</th>
+            </tr>
+          </thead>
+          <tbody id="tablaResultados"></tbody>
+        </table>
+        <p class="total" id="total"></p>
+        <div class="recomendacion" id="recomendacionFinal"></div>
+
+        <!-- ✅ Botón dentro del bloque correcto -->
+        <div style="text-align:center; margin-top:20px;">
+          <button id="btnPDF">Generar Acta PDF</button>
+        </div>
+      </div>
+    </div>
+
+    
+
+  <!-- === LIBRERÍAS === -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- === ARCHIVOS JS === -->
+  <script src="assets/js/licitacion.js"></script>
+</body>
+</html>

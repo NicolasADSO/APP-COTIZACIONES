@@ -2,104 +2,620 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Generador de Cotización</title>
+  <title>Generador de Cotización y Licitación</title>
   <link rel="stylesheet" href="assets/css/cotizacion.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f6f6;
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+      transition: all 0.3s;
+    }
+
+    /* === SIDEBAR === */
+    .sidebar {
+      width: 230px;
+      background: #990f0c;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 10px;
+      transition: width 0.3s ease;
+      position: fixed;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 100;
+      overflow: hidden;
+    }
+
+    .sidebar.collapsed { width: 70px; }
+
+    .toggle-btn {
+      position: absolute;
+      top: 15px;
+      right: -15px;
+      background: #b71c1c;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 35px;
+      height: 35px;
+      cursor: pointer;
+      font-size: 18px;
+      transition: background 0.2s;
+      z-index: 10;
+    }
+
+    .toggle-btn:hover { background: #c62828; }
+
+    .sidebar h2 {
+      margin: 60px 0 15px;
+      font-size: 18px;
+      text-align: center;
+      transition: opacity 0.3s;
+    }
+
+    .sidebar.collapsed h2 { opacity: 0; pointer-events: none; }
+
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sidebar li {
+      background: #b71c1c;
+      padding: 10px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .sidebar li:hover,
+    .sidebar li.active {
+      background: #ffffff;
+      color: #990f0c;
+      font-weight: bold;
+    }
+
+    .sidebar a {
+      color: inherit;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .sidebar span.text {
+      transition: opacity 0.3s, width 0.3s;
+    }
+
+    .sidebar.collapsed span.text {
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    /* === TOOLTIPS === */
+    .sidebar li::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 75px;
+      background: #333;
+      color: #fff;
+      padding: 5px 10px;
+      border-radius: 6px;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      transform: translateY(-50%);
+      top: 50%;
+      font-size: 13px;
+      z-index: 20;
+    }
+
+    .sidebar.collapsed li:hover::after {
+      opacity: 1;
+      transform: translateY(-50%) translateX(5px);
+    }
+
+    /* === CONTENIDO PRINCIPAL === */
+    .main-container {
+      margin-left: 230px;
+      transition: margin-left 0.3s ease;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+      background: #f6f6f6;
+      overflow-y: auto;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+
+    body.sidebar-collapsed .main-container { margin-left: 70px; }
+
+    section {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    section h2 { color: #990f0c; margin-top: 0; }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .form-row input,
+    .form-row select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      flex: 1;
+      min-width: 120px;
+    }
+
+    .form-row button {
+      background: #990f0c;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .form-row button:hover { background: #b71c1c; }
+
+    .disponibles {
+      font-size: 13px;
+      background: #f6f6f6;
+      border-radius: 5px;
+      padding: 6px 10px;
+      margin-top: 5px;
+      border: 1px dashed #ccc;
+    }
+
+    .resumen {
+      background: white;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      height: fit-content;
+      position: sticky;
+      top: 20px;
+    }
+
+    .estado {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .verde { background: #4CAF50; }
+    .rojo { background: #E53935; }
+
+    .simulador-alerta {
+      background: #fff8dc;
+      color: #7a6000;
+      border-left: 6px solid #ffca28;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      margin: 10px 0 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      max-width: 700px;
+    }
+    .main-container .simulador-alerta {
+      grid-column: 1 / span 2;
+      justify-self: center;
+    }
+  </style>
 </head>
 <body>
-  <!-- === NAVBAR === -->
-  <nav class="navbar">
-    <h1>Generador de Cotización</h1>
+  <!-- === SIDEBAR === -->
+  <aside class="sidebar" id="sidebar">
+    <button class="toggle-btn" id="toggleSidebar">☰</button>
+    <h2>Menú</h2>
     <ul>
-      <li class="tab active" data-tab="infraestructura">Infraestructura</li>
-      <li class="tab" data-tab="suministros">Suministros</li>
-      <li class="tab" data-tab="empleados">Empleados</li>
-      <li class="tab" data-tab="admin">Administrar listas</li>
-      <li class="tab" data-tab="resumen">Resumen</li>
+      <li class="active" data-tooltip="Cotización"><a href="cotizacion.html">📋 <span class="text">Cotización</span></a></li>
+      <li data-tooltip="Licitación"><a href="licitacion.html">📑 <span class="text">Licitación</span></a></li>
+      <li data-tooltip="Gestión de Precios"><a href="gestion-precios.html">💰 <span class="text">Gestión de Precios</span></a></li>
+      <li data-tooltip="Gestión de Tiempos"><a href="gestion-tiempos.html">⏱ <span class="text">Gestión de Tiempos</span></a></li>
+      <li data-tooltip="Gestión de Inventarios"><a href="gestion-inventarios.html">📦 <span class="text">Gestión de Inventarios</span></a></li>
+      <li data-tooltip="Organizador de Fases"><a href="organizador-fases.html">🗂 <span class="text">Organizador de Fases</span></a></li>
+      <li data-tooltip="Reportes"><a href="#">📊 <span class="text">Reportes</span></a></li>
     </ul>
-  </nav>
+  </aside>
 
-  <main>
-    <!-- === INFRAESTRUCTURA === -->
-    <section id="tab-infraestructura" class="tab-content active">
-      <h2>Infraestructura</h2>
-      <div class="form-row">
-        <select id="infraSelect"></select>
-        <input type="number" id="infraCantidad" placeholder="Cantidad">
-        <input type="number" id="infraValor" placeholder="Valor (COP)">
-        <button onclick="agregarItem('Infraestructura')">Agregar</button>
-      </div>
-    </section>
+  <!-- === CONTENIDO PRINCIPAL === -->
+  <div class="main-container">
+    <div class="simulador-alerta">
+      🔍 <strong>Modo Simulación:</strong> Esta cotización no afecta el inventario real.
+    </div>
+    <div class="secciones">
+      <!-- SUMINISTROS -->
+      <section>
+        <h2>Suministros</h2>
+        <div class="form-row">
+          <select id="subcatSuministros" onchange="cargarItems('suministros', this.value)">
+            <option value="">Seleccione categoría...</option>
+          </select>
+          <select id="itemSuministros">
+            <option value="">Seleccione ítem...</option>
+          </select>
+          <input type="number" id="suministroCantidad" placeholder="Cantidad">
+          <button onclick="agregarPrecio('Suministros')">Agregar</button>
+        </div>
+      </section>
 
-    <!-- === SUMINISTROS === -->
-    <section id="tab-suministros" class="tab-content">
-      <h2>Suministros</h2>
-      <div class="form-row">
-        <select id="suministroSelect"></select>
-        <input type="number" id="suministroCantidad" placeholder="Cantidad">
-        <input type="number" id="suministroValor" placeholder="Valor (COP)">
-        <button onclick="agregarItem('Suministros')">Agregar</button>
-      </div>
-    </section>
+      <!-- INFRAESTRUCTURA -->
+      <section>
+        <h2>Infraestructura</h2>
+        <div class="form-row">
+          <select id="subcatInfra" onchange="cargarItems('infraestructura', this.value)">
+            <option value="">Seleccione categoría...</option>
+          </select>
+          <select id="itemInfra">
+            <option value="">Seleccione ítem...</option>
+          </select>
+          <input type="number" id="infraCantidad" placeholder="Cantidad">
+          <button onclick="agregarPrecio('Infraestructura')">Agregar</button>
+        </div>
+      </section>
 
-    <!-- === EMPLEADOS === -->
-    <section id="tab-empleados" class="tab-content">
-      <h2>Empleados</h2>
-      <div class="form-row">
-        <select id="empleadoSelect"></select>
-        <input type="number" id="empleadoCantidad" placeholder="Cantidad">
-        <input type="number" id="empleadoValor" placeholder="Valor (COP)">
-        <button onclick="agregarItem('Empleados')">Agregar</button>
-      </div>
-    </section>
+      <!-- FUNCIONARIOS -->
+      <section>
+        <h2>Funcionarios</h2>
+        <div class="form-row">
+          <select id="cargoSelect" onchange="mostrarDisponibles(this.value)">
+            <option value="">Seleccione cargo...</option>
+          </select>
+          <input type="number" id="cantidadCargo" placeholder="Cantidad de funcionarios">
+          <button onclick="agregarFuncionario()">Agregar</button>
+        </div>
+        <div id="infoCargo" class="disponibles">Seleccione un cargo para ver los disponibles...</div>
+      </section>
+    </div>
 
-    <!-- === ADMINISTRAR LISTAS === -->
-    <section id="tab-admin" class="tab-content">
-      <h2>Administrar Listas y Categorías</h2>
-
-      <!-- Crear nueva categoría -->
-      <div class="form-row">
-        <input type="text" id="nuevaCategoria" placeholder="Nueva categoría...">
-        <button id="btnAgregarCategoria">Agregar categoría</button>
-      </div>
-
-      <!-- Agregar nuevo elemento -->
-      <div class="form-row">
-        <select id="tipoLista"></select>
-        <input type="text" id="nuevoElemento" placeholder="Nuevo elemento...">
-        <button id="btnAgregarElemento">Agregar elemento</button>
-      </div>
-
-      <div id="vistaListas" class="vista-listas"></div>
-    </section>
-
-    <!-- === RESUMEN === -->
-    <section id="tab-resumen" class="tab-content">
-      <h2>Resumen de Cotización</h2>
+    <aside class="resumen">
+      <h2>Resumen</h2>
       <table id="tablaResumen">
         <thead>
           <tr>
             <th>Sección</th>
-            <th>Elemento</th>
-            <th>Cantidad</th>
-            <th>Valor Unitario</th>
+            <th>Detalle</th>
+            <th>Cant.</th>
+            <th>Valor</th>
+            <th>Unidad</th>
             <th>Total</th>
             <th></th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
-
       <div class="total">
-        <strong>Total General: </strong>
-        <span id="totalGeneral">0</span> COP
+        <strong>Total General: </strong><span id="totalGeneral">0</span> COP
       </div>
+    </aside>
+  </div>
 
-      <button id="btnActa">Generar Acta (PDF)</button>
-    </section>
-  </main>
+  <script>
+    // === Sidebar ===
+    document.getElementById('toggleSidebar').addEventListener('click', () => {
+      document.getElementById('sidebar').classList.toggle('collapsed');
+      document.body.classList.toggle('sidebar-collapsed');
+    });
 
-  <!-- === SCRIPTS === -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="assets/js/cotizacion.js"></script>
+    // === Datos combinados desde Inventarios + Precios ===
+    let inventarios = JSON.parse(localStorage.getItem('inventarios') || '{}');
+    let precios = JSON.parse(localStorage.getItem('precios_detallados') || '{}');
+    let tiempos = JSON.parse(localStorage.getItem('tiempos_promedios') || '[]');
+    let disponibilidad = {};
+    let resumen = [];
+
+    // --- Fusionar inventarios con precios ---
+    let recursosCombinados = {};
+    Object.keys(inventarios).forEach(cat => {
+      recursosCombinados[cat] = {};
+      Object.keys(inventarios[cat]).forEach(sub => {
+        recursosCombinados[cat][sub] = inventarios[cat][sub].map(item => {
+          const precio = precios[cat]?.[sub]?.find(p => p.nombre === item.nombre);
+          return { nombre: item.nombre, cantidad: item.cantidad, valor: precio ? precio.valor : 0 };
+        });
+      });
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarSubcategorias();
+      cargarCargos();
+      sincronizarInventarioConCotizacion();
+    });
+
+    // === SINCRONIZAR NUEVAS CATEGORÍAS DEL INVENTARIO ===
+    function sincronizarInventarioConCotizacion() {
+      const seccionesContainer = document.querySelector(".secciones");
+      if (!seccionesContainer) return;
+
+      // Recorre todas las categorías del inventario
+      Object.keys(inventarios).forEach(cat => {
+        // Evita duplicar si ya existen secciones fijas
+        if (["suministros", "infraestructura"].includes(cat)) return;
+
+        // Crea el bloque visual
+        const section = document.createElement("section");
+        section.innerHTML = `
+          <h2>${cat.charAt(0).toUpperCase() + cat.slice(1)}</h2>
+          <div class="form-row">
+            <select id="subcat-${cat}" onchange="cargarItems('${cat}', this.value)">
+              <option value="">Seleccione subgrupo...</option>
+            </select>
+            <select id="item-${cat}">
+              <option value="">Seleccione ítem...</option>
+            </select>
+            <input type="number" id="cant-${cat}" placeholder="Cantidad">
+            <button onclick="agregarGenerico('${cat}')">Agregar</button>
+          </div>
+        `;
+        seccionesContainer.appendChild(section);
+
+        // Llenar subgrupos automáticamente
+        const subSelect = section.querySelector(`#subcat-${cat}`);
+        Object.keys(inventarios[cat]).forEach(sub => {
+          const opt = document.createElement("option");
+          opt.value = sub;
+          opt.textContent = sub;
+          subSelect.appendChild(opt);
+        });
+      });
+    }
+
+    // === Agregar recurso genérico ===
+    function agregarGenerico(categoria) {
+      const subcat = document.getElementById(`subcat-${categoria}`).value;
+      const itemSelect = document.getElementById(`item-${categoria}`);
+      const cantidad = parseInt(document.getElementById(`cant-${categoria}`).value);
+
+      if (!subcat || !itemSelect.value || isNaN(cantidad) || cantidad <= 0)
+        return alert("Complete todos los campos");
+
+      const valor = parseFloat(itemSelect.selectedOptions[0]?.dataset.valor || 0);
+      const stock = parseInt(itemSelect.selectedOptions[0]?.dataset.stock || 0);
+
+      if (cantidad > stock) return alert(`Solo hay ${stock} disponibles en inventario.`);
+
+      const total = cantidad * valor;
+      resumen.push({
+        tipo: "precio",
+        seccion: categoria.charAt(0).toUpperCase() + categoria.slice(1),
+        subcat,
+        item: itemSelect.value,
+        cantidad,
+        valor,
+        unidad: "COP",
+        total,
+      });
+
+      // Descontar del inventario
+      inventarios[categoria][subcat] = inventarios[categoria][subcat].map(it => {
+        if (it.nombre === itemSelect.value) it.cantidad -= cantidad;
+        return it;
+      });
+      localStorage.setItem("inventarios", JSON.stringify(inventarios));
+      renderResumen();
+    }
+
+
+    // ==============================
+    // SUMINISTROS / INFRAESTRUCTURA
+    // ==============================
+    function cargarSubcategorias() {
+      llenarSubcategorias('suministros', 'subcatSuministros');
+      llenarSubcategorias('infraestructura', 'subcatInfra');
+    }
+
+    function llenarSubcategorias(categoria, idSelect) {
+      const select = document.getElementById(idSelect);
+      select.innerHTML = '<option value="">Seleccione subgrupo...</option>';
+      if (!recursosCombinados[categoria]) return;
+      Object.keys(recursosCombinados[categoria]).forEach(sub => {
+        const opt = document.createElement('option');
+        opt.value = sub;
+        opt.textContent = sub;
+        select.appendChild(opt);
+      });
+    }
+
+    function cargarItems(categoria, subcat) {
+      const selectItem = document.getElementById(
+        categoria === 'suministros' ? 'itemSuministros' : 'itemInfra'
+      );
+      selectItem.innerHTML = '<option value="">Seleccione ítem...</option>';
+      if (!recursosCombinados[categoria] || !recursosCombinados[categoria][subcat]) return;
+      recursosCombinados[categoria][subcat].forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.nombre;
+        opt.dataset.valor = item.valor;
+        opt.dataset.stock = item.cantidad;
+        opt.dataset.subcat = subcat;
+        opt.textContent = `${item.nombre} (${item.cantidad} disp.)`;
+        selectItem.appendChild(opt);
+      });
+    }
+
+    function agregarPrecio(seccion) {
+      const esSumi = seccion === 'Suministros';
+      const selectItem = document.getElementById(esSumi ? 'itemSuministros' : 'itemInfra');
+      const cantidad = parseInt(document.getElementById(esSumi ? 'suministroCantidad' : 'infraCantidad').value);
+      const item = selectItem.value;
+      const valor = parseFloat(selectItem.selectedOptions[0]?.dataset.valor || 0);
+      const stock = parseInt(selectItem.selectedOptions[0]?.dataset.stock || 0);
+      const subcat = selectItem.selectedOptions[0]?.dataset.subcat || '';
+
+      if (!item || !cantidad || cantidad <= 0) return alert('Complete todos los campos');
+      if (cantidad > stock) return alert(`Solo hay ${stock} disponibles en inventario.`);
+
+      const total = cantidad * valor;
+      resumen.push({ tipo: 'precio', seccion, subcat, item, cantidad, valor, unidad: 'COP', total });
+
+      // Descontar del inventario localStorage
+      let catKey = seccion === 'Suministros' ? 'suministros' : 'infraestructura';
+      inventarios[catKey][subcat] = inventarios[catKey][subcat].map(it => {
+        if (it.nombre === item) it.cantidad -= cantidad;
+        return it;
+      });
+      localStorage.setItem('inventarios', JSON.stringify(inventarios));
+
+      renderResumen();
+    }
+
+    // ======================
+    // FUNCIONARIOS
+    // ======================
+    function cargarCargos() {
+      const cargos = [...new Set(tiempos.map(t => t.area))];
+      const select = document.getElementById('cargoSelect');
+      select.innerHTML = '<option value="">Seleccione cargo...</option>';
+      cargos.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        select.appendChild(opt);
+      });
+    }
+
+    function mostrarDisponibles(cargo) {
+      const div = document.getElementById('infoCargo');
+      if (!cargo) {
+        div.textContent = 'Seleccione un cargo para ver los disponibles...';
+        return;
+      }
+
+      const lista = tiempos.filter(t => t.area === cargo);
+      if (!lista.length) {
+        div.textContent = 'No hay personal registrado para este cargo.';
+        return;
+      }
+
+      if (!disponibilidad[cargo]) disponibilidad[cargo] = [...lista.map(p => p.nombre)];
+
+      const disponibles = disponibilidad[cargo];
+      const valorDia = lista[0]?.valor_dia || 0;
+      const promedio = lista[0]?.promedio || 0;
+      const unidad = lista[0]?.unidad || 'COP/día';
+
+      const color = disponibles.length > 0 ? 'verde' : 'rojo';
+      const estado = disponibles.length > 0 ? 'Disponibles' : 'Sin disponibles';
+
+      div.innerHTML = `
+        <span class="estado ${color}"></span> <strong>${estado}</strong><br>
+        <strong>Funcionarios:</strong> ${disponibles.length ? disponibles.join(', ') : 'Ninguno'}<br>
+        <strong>Valor por día:</strong> ${valorDia.toLocaleString('es-CO')} COP<br>
+        <strong>Promedio diario:</strong> ${promedio}
+      `;
+    }
+
+    function agregarFuncionario() {
+      const cargo = document.getElementById('cargoSelect').value;
+      const cantidad = parseInt(document.getElementById('cantidadCargo').value);
+      if (!cargo || isNaN(cantidad) || cantidad <= 0) return alert('Complete todos los campos');
+
+      if (!disponibilidad[cargo]) mostrarDisponibles(cargo);
+      if (!disponibilidad[cargo] || disponibilidad[cargo].length === 0)
+        return alert('No hay funcionarios disponibles para este cargo.');
+
+      const lista = tiempos.filter(t => t.area === cargo);
+      const valorDia = lista[0]?.valor_dia || 0;
+      const promedio = lista[0]?.promedio || 0;
+      const unidad = lista[0]?.unidad || 'COP/día';
+
+      const asignados = disponibilidad[cargo].splice(0, cantidad);
+
+      if (asignados.length < cantidad) {
+        alert(`Solo había ${asignados.length} disponibles para ${cargo}.`);
+      }
+
+      const total = valorDia * asignados.length;
+
+      resumen.push({
+        tipo: 'func',
+        cargo,
+        cantidad: asignados.length,
+        valor: valorDia,
+        unidad,
+        promedio,
+        total,
+        disponibles: asignados
+      });
+      renderResumen();
+      mostrarDisponibles(cargo);
+    }
+
+    // ====================
+    // RESUMEN
+    // ====================
+    function renderResumen() {
+      const tbody = document.querySelector('#tablaResumen tbody');
+      tbody.innerHTML = '';
+      let totalGeneral = 0;
+
+      resumen.forEach((r, i) => {
+        totalGeneral += r.total;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${r.tipo === 'precio' ? r.seccion : 'Funcionarios'}</td>
+          <td>${r.tipo === 'precio' ? r.item : r.cargo + ' — ' + (r.disponibles.join(', ') || 'Sin nombres')}</td>
+          <td>${r.cantidad}</td>
+          <td>${r.valor.toLocaleString('es-CO')}</td>
+          <td>${r.unidad}</td>
+          <td>${r.total.toLocaleString('es-CO')}</td>
+          <td><button onclick="eliminar(${i})">❌</button></td>
+        `;
+
+          if (r.tipo === 'precio') {
+            tr.style.opacity = "0.9";
+            tr.title = "Simulación (no descuenta inventario)";
+          }
+        tbody.appendChild(tr);
+      });
+      document.getElementById('totalGeneral').textContent = totalGeneral.toLocaleString('es-CO');
+    }
+
+    function eliminar(i) {
+      const item = resumen[i];
+      if (item.tipo === 'func' && item.cargo) {
+        if (!disponibilidad[item.cargo]) disponibilidad[item.cargo] = [];
+        disponibilidad[item.cargo].push(...item.disponibles);
+        mostrarDisponibles(item.cargo);
+      }
+      resumen.splice(i, 1);
+      renderResumen();
+    }
+  </script>
 </body>
 </html>

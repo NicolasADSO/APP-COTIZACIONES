@@ -1,10 +1,29 @@
-// === ARRAY PRINCIPAL DE COTIZACIÓN ===
+// === ARRAYS PRINCIPALES ===
 let cotizacion = [];
+let inventarios = JSON.parse(localStorage.getItem("inventarios") || "{}");
+let precios = JSON.parse(localStorage.getItem("precios_detallados") || "{}");
+
+// === FUSIONAR INVENTARIOS Y PRECIOS ===
+let recursosCombinados = {};
+Object.keys(inventarios).forEach((cat) => {
+  recursosCombinados[cat] = {};
+  Object.keys(inventarios[cat]).forEach((sub) => {
+    recursosCombinados[cat][sub] = inventarios[cat][sub].map((item) => {
+      const precio = precios[cat]?.[sub]?.find((p) => p.nombre === item.nombre);
+      return {
+        nombre: item.nombre,
+        cantidad: item.cantidad,
+        valor: precio ? precio.valor : 0,
+      };
+    });
+  });
+});
 
 // === AGREGAR ITEM A LA COTIZACIÓN ===
 function agregarItem(seccion) {
   let select, cantidad, valor;
 
+  // Identificar los inputs por sección
   if (seccion === "Infraestructura") {
     select = document.getElementById("infraSelect");
     cantidad = document.getElementById("infraCantidad");
@@ -18,41 +37,55 @@ function agregarItem(seccion) {
     cantidad = document.getElementById("empleadoCantidad");
     valor = document.getElementById("empleadoValor");
   } else {
-    // Para categorías nuevas dinámicas
+    // Categorías dinámicas
     const idBase = seccion.toLowerCase().replace(/\s+/g, "-");
     select = document.getElementById(`${idBase}-select`);
     cantidad = document.getElementById(`${idBase}-cantidad`);
     valor = document.getElementById(`${idBase}-valor`);
   }
 
-  if (!select || !cantidad || !valor) {
-    alert("No se encontraron los campos de la sección seleccionada.");
-    return;
-  }
+  if (!select || !cantidad) return alert("No se encontraron los campos de la sección seleccionada.");
+  if (!select.value || !cantidad.value) return alert("Completa todos los campos.");
 
-  if (!select.value || !cantidad.value || !valor.value) {
-    alert("Por favor completa todos los campos antes de agregar.");
-    return;
-  }
+  const itemSeleccionado = select.selectedOptions[0];
+  const stock = parseInt(itemSeleccionado?.dataset.stock || 0);
+  const valorAuto = parseFloat(itemSeleccionado?.dataset.valor || valor.value || 0);
 
   const item = {
     id: Date.now(),
     seccion,
     elemento: select.value,
     cantidad: parseInt(cantidad.value),
-    valor: parseFloat(valor.value),
-    total: parseInt(cantidad.value) * parseFloat(valor.value),
+    valor: valorAuto,
+    total: parseInt(cantidad.value) * parseFloat(valorAuto),
   };
+
+  if (item.cantidad > stock) return alert(`Solo hay ${stock} unidades disponibles de "${item.elemento}"`);
+
+  // === DESCONTAR DEL INVENTARIO ===
+  descontarInventario(seccion, item.elemento, item.cantidad);
 
   cotizacion.push(item);
   actualizarTabla();
 
   select.value = "";
   cantidad.value = "";
-  valor.value = "";
+  if (valor) valor.value = "";
 }
 
-// === ACTUALIZAR TABLA ===
+// === DESCONTAR CANTIDAD DEL INVENTARIO ===
+function descontarInventario(seccion, nombre, cantidad) {
+  const catKey = seccion.toLowerCase();
+  Object.keys(inventarios[catKey] || {}).forEach((sub) => {
+    inventarios[catKey][sub] = inventarios[catKey][sub].map((it) => {
+      if (it.nombre === nombre) it.cantidad -= cantidad;
+      return it;
+    });
+  });
+  localStorage.setItem("inventarios", JSON.stringify(inventarios));
+}
+
+// === ACTUALIZAR TABLA DE RESUMEN ===
 function actualizarTabla() {
   const tbody = document.querySelector("#tablaResumen tbody");
   tbody.innerHTML = "";
@@ -77,11 +110,28 @@ function actualizarTabla() {
 
 // === ELIMINAR ITEM ===
 function eliminarItem(id) {
+  const item = cotizacion.find((i) => i.id === id);
+  if (item) {
+    // Devolver stock al inventario
+    reponerInventario(item.seccion, item.elemento, item.cantidad);
+  }
   cotizacion = cotizacion.filter((i) => i.id !== id);
   actualizarTabla();
 }
 
-// === GENERAR ACTA PDF ===
+// === REPONER STOCK AL ELIMINAR ===
+function reponerInventario(seccion, nombre, cantidad) {
+  const catKey = seccion.toLowerCase();
+  Object.keys(inventarios[catKey] || {}).forEach((sub) => {
+    inventarios[catKey][sub] = inventarios[catKey][sub].map((it) => {
+      if (it.nombre === nombre) it.cantidad += cantidad;
+      return it;
+    });
+  });
+  localStorage.setItem("inventarios", JSON.stringify(inventarios));
+}
+
+// === GENERAR PDF DE COTIZACIÓN ===
 function generarPDF() {
   if (cotizacion.length === 0) {
     alert("No hay elementos en la cotización.");
@@ -96,23 +146,19 @@ function generarPDF() {
     year: "numeric",
   });
 
-  // === ENCABEZADO ===
+  // ENCABEZADO
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
   doc.setTextColor(153, 15, 12);
   doc.text("ACTA DE COTIZACIÓN", 105, 20, { align: "center" });
-
   doc.setFontSize(11);
   doc.setTextColor(0, 0, 0);
   doc.text("Sistema de Gestión de Recursos - Gadier Sistemas", 105, 27, { align: "center" });
   doc.line(20, 30, 190, 30);
 
-  // === FECHA ===
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(12);
   doc.text(`Cota, ${fecha}`, 20, 45);
 
-  // === CUERPO ===
   let y = 55;
   const intro = [
     "De acuerdo con los requerimientos presentados, se realiza la siguiente",
@@ -123,11 +169,9 @@ function generarPDF() {
     doc.text(line, 20, y);
     y += 7;
   });
-
   y += 5;
 
-  // === AGRUPAR POR SECCIONES ===
-  const secciones = Object.keys(listas);
+  const secciones = [...new Set(cotizacion.map((i) => i.seccion))];
   secciones.forEach((seccion) => {
     const items = cotizacion.filter((i) => i.seccion === seccion);
     if (items.length > 0) {
@@ -136,29 +180,23 @@ function generarPDF() {
       doc.setTextColor(153, 15, 12);
       doc.text(seccion.toUpperCase() + ":", 20, y);
       y += 8;
-
       doc.setTextColor(0, 0, 0);
-      doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
-
       items.forEach((item) => {
-        const texto = `- ${item.cantidad} ${item.elemento}${item.cantidad > 1 ? "s" : ""}`;
+        const texto = `- ${item.cantidad} ${item.elemento}`;
         const valorTexto = `$${item.total.toLocaleString()}`;
         doc.text(texto, 25, y);
         doc.text(valorTexto, 180, y, { align: "right" });
         y += 6;
-
         if (y > 260) {
           doc.addPage();
           y = 30;
         }
       });
-
       y += 6;
     }
   });
 
-  // === TOTAL GENERAL ===
   const total = document.getElementById("totalGeneral").textContent;
   doc.setFont("helvetica", "bold");
   doc.setTextColor(0, 0, 0);
@@ -166,7 +204,6 @@ function generarPDF() {
   y += 8;
   doc.text(`TOTAL GENERAL: $${total}`, 20, y);
 
-  // === CIERRE ===
   y += 15;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
@@ -180,7 +217,6 @@ function generarPDF() {
     y += 6;
   });
 
-  // === PIE ===
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
   doc.text("© Gadier Sistemas | Sistema de Cotización Interna", 105, 285, { align: "center" });
@@ -188,233 +224,30 @@ function generarPDF() {
   doc.save("acta_cotizacion.pdf");
 }
 
-// === NAVEGACIÓN ENTRE TABS ===
+// === INICIALIZAR ===
 document.addEventListener("DOMContentLoaded", () => {
-  const tabs = document.querySelectorAll(".tab");
-  const sections = document.querySelectorAll(".tab-content");
-
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      tabs.forEach((t) => t.classList.remove("active"));
-      sections.forEach((s) => s.classList.remove("active"));
-      tab.classList.add("active");
-      document.getElementById(`tab-${tab.dataset.tab}`).classList.add("active");
-    });
-  });
-
+  cargarInventariosEnSelects();
   const boton = document.getElementById("btnActa");
   if (boton) boton.addEventListener("click", generarPDF);
-
-  inicializarListas();
 });
 
-// === LISTAS DINÁMICAS ===
-let listas = {
-  Infraestructura: ["Oficina equipada", "Vehículo de transporte", "Equipos tecnológicos", "Espacio de almacenamiento"],
-  Suministros: ["Papelería", "Herramientas", "Material de limpieza", "Combustible"],
-  Empleados: ["Auxiliar técnico", "Ingeniero de soporte", "Coordinador logístico", "Supervisor"],
-};
-
-// === INICIALIZAR LISTAS ===
-function inicializarListas() {
-  const guardadas = JSON.parse(localStorage.getItem("listas"));
-  if (guardadas) listas = guardadas;
-
-  reconstruirNavbar();
-  cargarListas();
-
-  const btnCategoria = document.getElementById("btnAgregarCategoria");
-  if (btnCategoria) {
-    btnCategoria.addEventListener("click", () => {
-      const nueva = document.getElementById("nuevaCategoria").value.trim();
-      if (!nueva) return alert("Escribe un nombre para la nueva categoría.");
-      if (listas[nueva]) return alert("Esa categoría ya existe.");
-
-      listas[nueva] = [];
-      localStorage.setItem("listas", JSON.stringify(listas));
-      document.getElementById("nuevaCategoria").value = "";
-      agregarCategoriaAlNavbar(nueva);
-      cargarListas();
-      alert(`Categoría agregada: "${nueva}"`);
-    });
-  }
-
-  const btnElemento = document.getElementById("btnAgregarElemento");
-  if (btnElemento) {
-    btnElemento.addEventListener("click", () => {
-      const tipo = document.getElementById("tipoLista").value;
-      const nuevo = document.getElementById("nuevoElemento").value.trim();
-
-      if (!tipo) return alert("Selecciona una categoría primero.");
-      if (!nuevo) return alert("Escribe un nombre para el nuevo elemento.");
-      if (listas[tipo].includes(nuevo)) return alert("Ese elemento ya existe.");
-
-      listas[tipo].push(nuevo);
-      localStorage.setItem("listas", JSON.stringify(listas));
-      document.getElementById("nuevoElemento").value = "";
-      cargarListas();
-      alert(`Elemento agregado a ${tipo}: "${nuevo}"`);
-    });
-  }
-}
-
-// === CARGAR LISTAS ===
-function cargarListas() {
-  if (document.getElementById("infraSelect") && listas.Infraestructura)
-    document.getElementById("infraSelect").innerHTML = generarOpciones(listas.Infraestructura);
-  if (document.getElementById("suministroSelect") && listas.Suministros)
-    document.getElementById("suministroSelect").innerHTML = generarOpciones(listas.Suministros);
-  if (document.getElementById("empleadoSelect") && listas.Empleados)
-    document.getElementById("empleadoSelect").innerHTML = generarOpciones(listas.Empleados);
-
-  const selectTipo = document.getElementById("tipoLista");
-  if (selectTipo) {
-    selectTipo.innerHTML = Object.keys(listas)
-      .map((cat) => `<option value="${cat}">${cat}</option>`)
-      .join("");
-  }
-
-  actualizarVistaListas();
-}
-
-// === ACTUALIZAR VISTA ADMIN ===
-function actualizarVistaListas() {
-  const contenedor = document.getElementById("vistaListas");
-  if (!contenedor) return;
-  contenedor.innerHTML = "";
-
-  Object.entries(listas).forEach(([categoria, items]) => {
-    const bloque = document.createElement("div");
-    bloque.classList.add("bloque-categoria");
-    bloque.innerHTML = `
-      <div class="categoria-header">
-        <h4>${categoria}</h4>
-        <div class="categoria-actions">
-          <button class="btnEditarCat" data-cat="${categoria}">📝</button>
-          <button class="btnEliminarCat" data-cat="${categoria}">🗑️</button>
-        </div>
-      </div>
-      <ul>
-        ${
-          items
-            .map(
-              (i) => `
-          <li>${i}
-            <button class="btnEliminarItem" data-cat="${categoria}" data-item="${i}">✖</button>
-          </li>`
-            )
-            .join("") || "<li><em>Vacío</em></li>"
+// === CARGAR ITEMS DE INVENTARIO EN LOS SELECTS ===
+function cargarInventariosEnSelects() {
+  // Recorremos todas las categorías
+  Object.keys(recursosCombinados).forEach((cat) => {
+    Object.keys(recursosCombinados[cat]).forEach((sub) => {
+      const items = recursosCombinados[cat][sub];
+      items.forEach((item) => {
+        const idSelect = cat === "suministros" ? "suministroSelect" : cat === "infraestructura" ? "infraSelect" : null;
+        if (idSelect && document.getElementById(idSelect)) {
+          const opt = document.createElement("option");
+          opt.value = item.nombre;
+          opt.textContent = `${item.nombre} (${item.cantidad} disp.)`;
+          opt.dataset.valor = item.valor;
+          opt.dataset.stock = item.cantidad;
+          document.getElementById(idSelect).appendChild(opt);
         }
-      </ul>
-    `;
-    contenedor.appendChild(bloque);
-  });
-
-  document.querySelectorAll(".btnEliminarCat").forEach((btn) =>
-    btn.addEventListener("click", (e) => {
-      const cat = e.target.dataset.cat;
-      if (confirm(`¿Eliminar la categoría "${cat}" y todos sus elementos?`)) {
-        delete listas[cat];
-        localStorage.setItem("listas", JSON.stringify(listas));
-        cargarListas();
-        reconstruirNavbar();
-      }
-    })
-  );
-
-  document.querySelectorAll(".btnEditarCat").forEach((btn) =>
-    btn.addEventListener("click", (e) => {
-      const cat = e.target.dataset.cat;
-      const nuevoNombre = prompt(`Editar nombre de la categoría "${cat}":`, cat);
-      if (!nuevoNombre || nuevoNombre.trim() === "" || nuevoNombre === cat) return;
-      if (listas[nuevoNombre]) return alert("Ya existe una categoría con ese nombre.");
-
-      listas[nuevoNombre] = [...listas[cat]];
-      delete listas[cat];
-      localStorage.setItem("listas", JSON.stringify(listas));
-      cargarListas();
-      reconstruirNavbar();
-      alert(`Categoría renombrada a "${nuevoNombre}"`);
-    })
-  );
-
-  document.querySelectorAll(".btnEliminarItem").forEach((btn) =>
-    btn.addEventListener("click", (e) => {
-      const cat = e.target.dataset.cat;
-      const item = e.target.dataset.item;
-      listas[cat] = listas[cat].filter((i) => i !== item);
-      localStorage.setItem("listas", JSON.stringify(listas));
-      cargarListas();
-    })
-  );
-}
-
-// === RECONSTRUIR NAVBAR ===
-function reconstruirNavbar() {
-  if (!listas) return;
-  const categorias = Object.keys(listas);
-  categorias.forEach((cat) => {
-    const idTab = cat.toLowerCase().replace(/\s+/g, "-");
-    if (document.querySelector(`[data-tab="${idTab}"]`)) return;
-    if (["infraestructura", "suministros", "empleados", "admin", "resumen"].includes(idTab)) return;
-    agregarCategoriaAlNavbar(cat);
-  });
-}
-
-// === AGREGAR NUEVA CATEGORÍA AL NAVBAR ===
-function agregarCategoriaAlNavbar(nombreCategoria) {
-  const navbar = document.querySelector(".navbar ul");
-  const main = document.querySelector("main") || document.querySelector(".content");
-  if (!navbar || !main) return console.error("No se encontró el navbar o el contenedor principal");
-
-  const idTab = nombreCategoria.toLowerCase().replace(/\s+/g, "-");
-  if (document.querySelector(`[data-tab="${idTab}"]`)) return;
-
-  const nuevaTab = document.createElement("li");
-  nuevaTab.classList.add("tab");
-  nuevaTab.dataset.tab = idTab;
-  nuevaTab.textContent = nombreCategoria;
-
-  const adminTab = document.querySelector('[data-tab="admin"]');
-  if (adminTab) navbar.insertBefore(nuevaTab, adminTab);
-  else navbar.appendChild(nuevaTab);
-
-  const nuevaSeccion = document.createElement("section");
-  nuevaSeccion.classList.add("tab-content");
-  nuevaSeccion.id = `tab-${idTab}`;
-  nuevaSeccion.innerHTML = `
-    <h2>${nombreCategoria}</h2>
-    <div class="form-row">
-      <select id="${idTab}-select"></select>
-      <input type="number" id="${idTab}-cantidad" placeholder="Cantidad">
-      <input type="number" id="${idTab}-valor" placeholder="Valor (COP)">
-      <button onclick="agregarItem('${nombreCategoria}')">Agregar</button>
-    </div>
-  `;
-  const adminSection = document.getElementById("tab-admin");
-  if (adminSection) main.insertBefore(nuevaSeccion, adminSection);
-  else main.appendChild(nuevaSeccion);
-
-  cargarListas();
-
-  // Reactivar eventos de navegación
-  document.querySelectorAll(".tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-      document.querySelectorAll(".tab-content").forEach((s) => s.classList.remove("active"));
-      tab.classList.add("active");
-      document.getElementById(`tab-${tab.dataset.tab}`).classList.add("active");
+      });
     });
   });
-
-  // Activar nueva pestaña automáticamente
-  document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-  document.querySelectorAll(".tab-content").forEach((s) => s.classList.remove("active"));
-  nuevaTab.classList.add("active");
-  nuevaSeccion.classList.add("active");
-}
-
-// === GENERAR OPCIONES DE SELECT ===
-function generarOpciones(array) {
-  return `<option value="">Seleccionar...</option>` + array.map((el) => `<option>${el}</option>`).join("");
 }

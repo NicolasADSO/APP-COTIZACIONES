@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gestión de Precios</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --rojo:#990f0c;
+      --rojo-osc:#7f0c0a;
+      --gris:#f6f6f6;
+      --borde:#e6e6e6;
+      --txt:#222;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family: Arial, sans-serif;
+      background: var(--gris);
+      margin:0;
+      color:var(--txt);
+      min-height:100vh;
+    }
+
+    /* HEADER */
+    header{
+      background: var(--rojo);
+      color:#fff;
+      padding:14px 22px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    header h1{margin:0; font-size:20px; font-weight:700}
+    .volver{
+      background:#fff; color:var(--rojo);
+      color: #990f0c;
+      padding:8px 14px; border-radius:8px; text-decoration:none; font-weight:700;
+      border:1px solid #fff; transition:.2s;
+    }
+    .volver:hover{background:#f9f9f9; border-color:#eee}
+
+    main{max-width:1100px; margin:auto; padding:20px}
+
+    /* TOOLS BAR */
+    .tools{
+      display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+      margin-bottom:16px;
+    }
+    .pill{
+      background:#fff; border:1px solid var(--borde); border-radius:999px;
+      padding:8px 12px; display:inline-flex; align-items:center; gap:8px;
+      box-shadow:0 1px 2px rgba(0,0,0,.06);
+    }
+    .btn{
+      border:none; cursor:pointer; padding:8px 12px; border-radius:8px; font-weight:600;
+      background:var(--rojo); color:#fff; transition:.2s;
+    }
+    .btn.outline{
+      background:#fff; color:var(--rojo); border:1px solid var(--rojo);
+    }
+    .btn:hover{background:var(--rojo-osc)}
+    .btn.outline:hover{background:#fff3f3}
+
+    /* CARD CATEGORÍA */
+    .card{
+      background:#fff; border:1px solid var(--borde); border-radius:14px;
+      padding:16px; box-shadow:0 2px 6px rgba(0,0,0,.06); margin-bottom:18px;
+    }
+    .card-header{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      border-bottom:1px dashed var(--borde); padding-bottom:10px; margin-bottom:10px;
+    }
+    .card-title{
+      display:flex; align-items:center; gap:10px; font-weight:800; color:var(--rojo);
+      font-size:18px; text-transform:capitalize;
+    }
+    .badge{
+      background:#fff7f7; color:var(--rojo); border:1px solid #ffd7d7; border-radius:999px;
+      padding:2px 8px; font-size:12px;
+    }
+
+    /* SUBGRUPO */
+    .subgrupo{
+      border:1px solid #f0f0f0; border-radius:12px; padding:12px; margin:12px 0;
+      background:#fff;
+    }
+    .sub-header{
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      margin-bottom:8px;
+    }
+    .sub-title{
+      font-weight:700; font-size:15px; color:#333; text-transform:capitalize;
+    }
+    .sub-actions{display:flex; gap:8px; flex-wrap:wrap}
+
+    /* TABLA */
+    .table{
+      width:100%; border-collapse: collapse; font-size:14px;
+      border:1px solid #f0f0f0; border-radius:10px; overflow:hidden;
+    }
+    .table th, .table td{
+      border-bottom:1px solid #f3f3f3; padding:10px; text-align:left;
+    }
+    .table th{
+      background:#fafafa; font-weight:700;
+    }
+    .table tr:last-child td{border-bottom:none}
+
+    .acciones{display:flex; gap:6px; flex-wrap:wrap}
+    .small{padding:6px 10px; font-size:12px; border-radius:6px}
+    .edit{background:#1e88e5}
+    .edit:hover{background:#166fbe}
+    .danger{background:#e53935}
+    .danger:hover{background:#c62828}
+
+    /* VACÍO */
+    .empty{
+      padding:14px; border:1px dashed #e4e4e4; border-radius:10px;
+      text-align:center; color:#777; background:#fff;
+    }
+
+    /* BUSCADOR */
+    .search{
+      padding:8px 12px; border:1px solid var(--borde); border-radius:10px; width:260px;
+      background:#fff;
+    }
+
+    @media (max-width:720px){
+      .search{width:100%}
+      .card-header{flex-direction:column; align-items:flex-start}
+      .sub-header{flex-direction:column; align-items:flex-start}
+      .acciones{gap:4px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gestión de Precios</h1>
+    <a class="volver" href="cotizacion.html">← Volver</a>
+  </header>
+
+  <main>
+    <div class="tools">
+      <div class="pill">
+        <strong>Vista:</strong>
+        <button class="btn outline small" id="toggleAll">Expandir/Colapsar subgrupos</button>
+      </div>
+      <input id="buscar" class="search" type="search" placeholder="Buscar ítem o subgrupo..." />
+    </div>
+
+    <div id="contenedorCategorias"></div>
+
+    <div id="estadoVacio" class="empty" style="display:none">
+      No hay categorías en Inventarios. Crea categorías y subgrupos en <strong>Gestión de Inventarios</strong> y vuelve aquí para asignar precios.
+    </div>
+  </main>
+
+  <script>
+    // ====== UTILIDADES ======
+    const fmtCOP = (n)=> {
+      const valor = Number(n ?? 0);
+      return "$" + valor.toLocaleString("es-CO");
+    };
+
+    // ====== ESTADO ======
+    let inventarios = {};
+    let precios = {};
+    let colapsadoGlobal = false;
+    let filtroTexto = "";
+
+    // ====== CARGA Y SINCRONIZACIÓN ======
+    function cargarEstado(){
+      try{
+        inventarios = JSON.parse(localStorage.getItem("inventarios") || "{}");
+      }catch{ inventarios = {}; }
+
+      try{
+        precios = JSON.parse(localStorage.getItem("precios_detallados") || "{}");
+      }catch{ precios = {}; }
+
+      // Asegurar que existan contenedores por categoría/subgrupo
+      Object.keys(inventarios).forEach(cat=>{
+        precios[cat] = precios[cat] || {};
+        Object.keys(inventarios[cat] || {}).forEach(sub=>{
+          precios[cat][sub] = precios[cat][sub] || [];
+          // Sincronizar items: si un ítem existe en inventario y no en precios, agregar con valor 0
+          const listaInv = inventarios[cat][sub] || [];
+          const listaPre = precios[cat][sub];
+          listaInv.forEach(invItem=>{
+            const existe = listaPre.some(p=> p.nombre === invItem.nombre);
+            if(!existe){
+              listaPre.push({ nombre: invItem.nombre, valor: 0 });
+            }
+          });
+          // Si hay precios de items que ya no están en inventario, los dejamos (por si regresan),
+          // pero podrías optar por filtrarlos. Aquí mantenemos para no perder el histórico.
+        });
+      });
+
+      guardarPrecios();
+    }
+
+    function guardarPrecios(){
+      localStorage.setItem("precios_detallados", JSON.stringify(precios));
+    }
+
+    // ====== RENDER ======
+    function render(){
+      const cont = document.getElementById("contenedorCategorias");
+      const vacio = document.getElementById("estadoVacio");
+      cont.innerHTML = "";
+
+      const cats = Object.keys(inventarios);
+      if(cats.length === 0){
+        vacio.style.display = "block";
+        return;
+      }else{
+        vacio.style.display = "none";
+      }
+
+      cats.forEach(cat=>{
+        // Card categoría
+        const card = document.createElement("section");
+        card.className = "card";
+
+        // Encabezado categoría
+        const totalSubgrupos = Object.keys(inventarios[cat] || {}).length;
+        card.innerHTML = `
+          <div class="card-header">
+            <div class="card-title">
+              <span>📦</span>
+              <span>${cat}</span>
+              <span class="badge">${totalSubgrupos} subgrupos</span>
+            </div>
+            <div class="sub-actions">
+              <button class="btn outline small" onclick="toggleSubgrupos('${cat}')">Mostrar/Ocultar</button>
+            </div>
+          </div>
+          <div class="card-body"></div>
+        `;
+
+        const body = card.querySelector(".card-body");
+
+        // Subgrupos
+        Object.keys(inventarios[cat] || {}).forEach(sub=>{
+          // Filtro por texto: revisa subgrupo e ítems
+          const listaInv = inventarios[cat][sub] || [];
+          const listaPre = precios[cat]?.[sub] || [];
+
+          const coincideSub = sub.toLowerCase().includes(filtroTexto);
+          const coincideItem = listaPre.some(p => p.nombre.toLowerCase().includes(filtroTexto));
+          if(filtroTexto && !coincideSub && !coincideItem) return;
+
+          const wrap = document.createElement("div");
+          wrap.className = "subgrupo";
+          if(colapsadoGlobal) wrap.style.display = "none";
+
+          // Construye mapa de precios para acceso rápido
+          const mapPre = new Map(listaPre.map(p=>[p.nombre, p.valor]));
+
+          // Tabla
+          const rows = listaInv
+            .filter(it => !filtroTexto || it.nombre.toLowerCase().includes(filtroTexto) || coincideSub)
+            .map(it=>{
+              const valor = mapPre.has(it.nombre) ? mapPre.get(it.nombre) : 0;
+              return `
+                <tr>
+                  <td>${it.nombre}</td>
+                  <td style="width:160px">${fmtCOP(valor)}</td>
+                  <td class="acciones" style="width:220px">
+                    <button class="btn small edit" onclick="editarPrecio('${cat}','${sub}','${it.nombre.replace(/'/g,"\\'")}')">Editar</button>
+                    <button class="btn small danger" onclick="eliminarPrecio('${cat}','${sub}','${it.nombre.replace(/'/g,"\\'")}')">Eliminar</button>
+                  </td>
+                </tr>
+              `;
+            }).join("");
+
+          wrap.innerHTML = `
+            <div class="sub-header">
+              <div class="sub-title">🗂️ ${sub}</div>
+              <div class="sub-actions">
+                <button class="btn outline small" onclick="colapsarToggle(this)">Colapsar</button>
+              </div>
+            </div>
+            ${rows
+              ? `<table class="table">
+                  <thead>
+                    <tr>
+                      <th>Ítem</th>
+                      <th>Valor (COP)</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>${rows}</tbody>
+                </table>`
+              : `<div class="empty">Este subgrupo no tiene ítems. Adminístralos en <strong>Gestión de Inventarios</strong>.</div>`
+            }
+          `;
+
+          body.appendChild(wrap);
+        });
+
+        cont.appendChild(card);
+      });
+    }
+
+    // ====== ACCIONES ======
+    function editarPrecio(cat, sub, nombre){
+      const lista = precios?.[cat]?.[sub];
+      if(!lista){ return; }
+      const idx = lista.findIndex(p => p.nombre === nombre);
+      const actual = idx >= 0 ? (lista[idx].valor || 0) : 0;
+      const input = prompt(`Nuevo valor COP para "${nombre}":`, actual);
+      if(input === null) return;
+      const nuevo = Number(input);
+      if(Number.isNaN(nuevo) || nuevo < 0){
+        alert("Ingrese un valor numérico válido (>= 0).");
+        return;
+      }
+      if(idx >= 0){
+        lista[idx].valor = nuevo;
+      }else{
+        lista.push({ nombre, valor:nuevo });
+      }
+      guardarPrecios();
+      render();
+    }
+
+    function eliminarPrecio(cat, sub, nombre){
+      const lista = precios?.[cat]?.[sub];
+      if(!lista) return;
+      if(!confirm(`¿Eliminar el precio de "${nombre}"?`)) return;
+
+      const i = lista.findIndex(p => p.nombre === nombre);
+      if(i >= 0){
+        // Eliminamos el registro de precio; si el ítem sigue en inventario, en el próximo sync reaparece con 0
+        lista.splice(i,1);
+      }
+      guardarPrecios();
+      render();
+    }
+
+    function toggleSubgrupos(cat){
+      // Alterna display de subgrupos dentro de una categoría
+      const cont = document.getElementById("contenedorCategorias");
+      const card = [...cont.children].find(c =>
+        c.querySelector(".card-title span:nth-child(2)")?.textContent === cat
+      );
+      if(!card) return;
+      [...card.querySelectorAll(".subgrupo")].forEach(sg=>{
+        sg.style.display = (sg.style.display === "none") ? "" : "none";
+      });
+    }
+
+    function colapsarToggle(btn){
+      // Alterna el contenedor de un subgrupo específico
+      const wrap = btn.closest(".subgrupo");
+      const tabla = wrap.querySelector(".table");
+      if(!tabla){
+        // cuando no hay tabla (vacío), alternar todo el subgrupo
+        wrap.style.display = (wrap.style.display === "none") ? "" : "none";
+        return;
+      }
+      tabla.style.display = (tabla.style.display === "none") ? "" : "none";
+      btn.textContent = (tabla.style.display === "none") ? "Expandir" : "Colapsar";
+    }
+
+    // ====== BUSCADOR Y TOGGLE GLOBAL ======
+    document.getElementById("buscar").addEventListener("input", (e)=>{
+      filtroTexto = (e.target.value || "").trim().toLowerCase();
+      render();
+    });
+
+    document.getElementById("toggleAll").addEventListener("click", ()=>{
+      colapsadoGlobal = !colapsadoGlobal;
+      render();
+    });
+
+    // ====== INICIO ======
+    document.addEventListener("DOMContentLoaded", ()=>{
+      cargarEstado();
+      render();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Tiempos</title>
+  <link rel="stylesheet" href="assets/css/cotizacion.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f6f6f6;
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    header {
+      background: #990f0c;
+      color: white;
+      padding: 15px 25px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    header h1 { margin: 0; font-size: 20px; }
+
+    .volver {
+      background: white;
+      color: #990f0c;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: background 0.2s;
+    }
+
+    .volver:hover { background: #f1f1f1; }
+
+    main { padding: 20px; max-width: 1000px; margin: auto; }
+
+    section {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+
+    section h2 {
+      color: #990f0c;
+      margin-top: 0;
+    }
+
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .form-row input, .form-row select {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .form-row button {
+      background: #990f0c;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .form-row button:hover { background: #b71c1c; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    th { background: #f1f1f1; }
+
+    .acciones button {
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 0 3px;
+      color: white;
+    }
+
+    .editar { background: #2196f3; }
+    .eliminar { background: #e53935; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gestión de Tiempos</h1>
+    <a href="cotizacion.html" class="volver">← Volver</a>
+  </header>
+
+  <main>
+
+    <!-- === NUEVA SECCIÓN: CARGOS === -->
+    <section>
+      <h2>Agregar nuevo cargo</h2>
+      <div class="form-row">
+        <input type="text" id="nuevoCargo" placeholder="Nombre del cargo (ej: Digitalizador)">
+        <button id="btnAgregarCargo">➕ Agregar Cargo</button>
+      </div>
+
+      <table id="tablaCargos" border="1" style="width:100%; border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th>Cargo / Área personalizada</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- === REGISTRAR TIEMPOS === -->
+    <section>
+      <h2>Registrar tiempo promedio diario y valor</h2>
+
+      <div class="form-row">
+        <select id="areaSelect">
+          <option value="">Seleccione área o cargo...</option>
+        </select>
+
+        <input type="number" id="valorDia" placeholder="Valor diario (COP)">
+        <input type="number" id="cantidadPromedio" placeholder="Promedio diario">
+        <input type="text" id="unidad" placeholder="Unidad (ej: documentos, libros...)">
+        <button onclick="agregarTiempo()">Agregar</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Listado de tiempos registrados</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Área / Cargo</th>
+            <th>Valor Diario (COP)</th>
+            <th>Promedio Diario</th>
+            <th>Unidad</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaTiempos"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script>
+    // === BASE DE FASES ===
+    const fasesBase = [
+      "Recepción",
+      "Restauración",
+      "Empaste",
+      "Digitalización",
+      "Control de Calidad",
+      "Entrega"
+    ];
+
+    // === CARGOS PERSONALIZADOS ===
+    let cargos = JSON.parse(localStorage.getItem("cargos") || "[]");
+
+    const tablaCargos = document.querySelector("#tablaCargos tbody");
+    const inputCargo = document.getElementById("nuevoCargo");
+    const btnAgregar = document.getElementById("btnAgregarCargo");
+    const areaSelect = document.getElementById("areaSelect");
+
+    function guardarCargos() {
+      localStorage.setItem("cargos", JSON.stringify(cargos));
+      cargarAreas();
+    }
+
+    function renderCargos() {
+      tablaCargos.innerHTML = "";
+      cargos.forEach((nombre, i) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${nombre}</td>
+          <td><button class="eliminar" onclick="eliminarCargo(${i})">🗑️</button></td>
+        `;
+        tablaCargos.appendChild(tr);
+      });
+      cargarAreas();
+    }
+
+    btnAgregar.addEventListener("click", () => {
+      const nombre = inputCargo.value.trim();
+      if (!nombre) return alert("Ingrese un nombre de cargo válido.");
+      if (cargos.includes(nombre)) return alert("Ese cargo ya existe.");
+      cargos.push(nombre);
+      guardarCargos();
+      inputCargo.value = "";
+      renderCargos();
+    });
+
+    window.eliminarCargo = function(i) {
+      if (!confirm(`¿Eliminar el cargo "${cargos[i]}"?`)) return;
+      cargos.splice(i, 1);
+      guardarCargos();
+      renderCargos();
+    };
+
+    // === CARGAR ÁREAS Y CARGOS EN SELECT ===
+    function cargarAreas() {
+      areaSelect.innerHTML = '<option value="">Seleccione área o cargo...</option>';
+      // Fases base
+      fasesBase.forEach(f => {
+        const opt = document.createElement("option");
+        opt.value = f;
+        opt.textContent = `🔹 ${f}`;
+        areaSelect.appendChild(opt);
+      });
+      // Cargos agregados manualmente
+      cargos.forEach(c => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        opt.textContent = `👷 ${c}`;
+        areaSelect.appendChild(opt);
+      });
+    }
+
+    // === REGISTRO DE TIEMPOS ===
+    let tiempos = JSON.parse(localStorage.getItem('tiempos_promedios') || '[]');
+
+    function guardarTiempos() {
+      localStorage.setItem('tiempos_promedios', JSON.stringify(tiempos));
+    }
+
+    function renderTiempos() {
+      const tbody = document.getElementById('tablaTiempos');
+      tbody.innerHTML = '';
+      tiempos.forEach((t, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${t.area}</td>
+          <td>${t.valor_dia ? t.valor_dia.toLocaleString('es-CO') : 0}</td>
+          <td>${t.promedio}</td>
+          <td>${t.unidad}</td>
+          <td class="acciones">
+            <button class="editar" onclick="editar(${i})">Editar</button>
+            <button class="eliminar" onclick="eliminar(${i})">Eliminar</button>
+          </td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function agregarTiempo() {
+      const area = areaSelect.value;
+      const valor_dia = parseFloat(document.getElementById('valorDia').value);
+      const promedio = parseFloat(document.getElementById('cantidadPromedio').value);
+      const unidad = document.getElementById('unidad').value.trim();
+
+      if (!area || isNaN(promedio) || !unidad || isNaN(valor_dia)) {
+        alert('Complete todos los campos correctamente');
+        return;
+      }
+
+      tiempos.push({ area, valor_dia, promedio, unidad });
+      guardarTiempos();
+      renderTiempos();
+
+      document.getElementById('valorDia').value = '';
+      document.getElementById('cantidadPromedio').value = '';
+      document.getElementById('unidad').value = '';
+    }
+
+    function eliminar(i) {
+      if (!confirm('¿Eliminar este registro?')) return;
+      tiempos.splice(i, 1);
+      guardarTiempos();
+      renderTiempos();
+    }
+
+    function editar(i) {
+      const t = tiempos[i];
+      const nuevoValor = parseFloat(prompt(`Nuevo valor diario (COP) para ${t.area}:`, t.valor_dia || 0));
+      const nuevoPromedio = parseFloat(prompt(`Nuevo promedio diario para ${t.area}:`, t.promedio || 0));
+      if (isNaN(nuevoValor) || isNaN(nuevoPromedio)) return alert('Valores inválidos');
+      tiempos[i].valor_dia = nuevoValor;
+      tiempos[i].promedio = nuevoPromedio;
+      guardarTiempos();
+      renderTiempos();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCargos();
+      renderTiempos();
+      cargarAreas();
+    });
+  </script>
+</body>
+</html>
